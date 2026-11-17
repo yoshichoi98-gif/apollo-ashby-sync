@@ -1,0 +1,35 @@
+name = "apollo-ashby-sync"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Apollo Workflows POST to /apollo/added and /apollo/replied in real time — that
+# is still the fast path. The cron below is the safety net: it reads Apollo's recent
+# sent messages and creates/moves anyone the webhooks missed (a dropped or
+# never-enrolled event would otherwise strand them).
+# Hourly: each run spends ~60 of Apollo's 2000/day emailer_messages calls and ZERO
+# contacts/search, which is left entirely to the add webhook's routing lookup.
+[triggers]
+crons = ["0 * * * *"]
+
+# Worker Logs, so a future miss can be traced to a real request instead of guessed.
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "apollo-ashby-sync"
+database_id = "00000000-0000-0000-0000-000000000053"
+
+[vars]
+# Optional catch-all: if a contact's sequence isn't in sequence_job_map, send them to
+# this Ashby job id instead of skipping. Leave empty to skip unmapped sequences.
+DEFAULT_JOB_ID = ""
+# Ashby source id to attribute created candidates to (the "Apollo" source).
+ASHBY_SOURCE_ID = "00000000-0000-0000-0000-000000000054"
+
+# Secrets (set with `wrangler secret put <NAME>`), NOT stored here:
+#   ASHBY_API_KEY      Ashby API key (candidatesRead + candidatesWrite)
+#   WEBHOOK_TOKEN      shared secret required on the ?token= query of every Apollo webhook
+#   APOLLO_MASTER_KEY  (optional) Apollo master key,
+#                      used only for the payload fallback lookup + /admin/reconcile
